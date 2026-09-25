@@ -1,5 +1,3 @@
-Chia việc phase 1:
-Trần Minh Trọng làm mục 1.1,1.2,2.1
-Nguyễn Trà Cao Quốc Bảo làm mục 1.2,2.1
-Hoàng Gia Phúc làm mục 1.2, 2.1
-Sơ đồ ER cả ba thành viên cùng làm
+Trần Minh Trọng N24DCCN177 
+Nguyễn Trà Cao Quốc Bảo N24DCCN102
+Hoàng Gia Phúc N24DCCN152
