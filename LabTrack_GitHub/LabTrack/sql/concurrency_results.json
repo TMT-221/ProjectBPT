@@ -1,7 +1,0 @@
-{
-  "engine": "Native PostgreSQL with independent connections",
-  "run_at": "2026-11-20T15:06:08.354Z",
-  "executed": false,
-  "tests": [],
-  "reason": "DATABASE_URL is required and must point to a disposable PostgreSQL database loaded with 01_schema.sql and 02_seed.sql."
-}
