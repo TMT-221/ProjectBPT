@@ -1,0 +1,12 @@
+{
+  "name": "project-bpt",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "start": "node LabTrack/server.mjs",
+    "test": "npm --prefix LabTrack test",
+    "validate": "node LabTrack/sql/run_validation.mjs",
+    "security": "node LabTrack/sql/run_security.mjs"
+  }
+}

@@ -1,0 +1,194 @@
+{
+  "started_at": "2026-11-21T05:18:53.293Z",
+  "engine": "PGlite 0.5.10 (PostgreSQL WASM)",
+  "dataset": {
+    "file": "sql/02_dataset_1200.sql",
+    "expected_business_rows": 1200,
+    "actual_business_rows": 1200
+  },
+  "scope": "SQL access-control checks in an isolated in-memory database. Temporary column grants and role memberships are rolled back. HTTP security tests S21-S29 are recorded by test/run_validation.mjs, not counted as SQL tests here.",
+  "source_sha256": {
+    "sql/01_schema.sql": "cc28671e85f49198319813803208f138f94c418e8fa79c958280b66dd7ce76e7",
+    "sql/02_dataset_1200.sql": "a6e3d243cc7a88c67c6c947c589d4978cecd9f656502d9ad4383e6d823176c2c",
+    "sql/04_rbac.sql": "c335380e090ccc5109a82911bfe2362a23fab927efa0418e92eb9ba3d54ae421",
+    "auth.sql": "da8579fa49f7a1d62a0b096bcdc5f3d2c077c1f59d91f675e64027697ef4cfb9"
+  },
+  "checks": [
+    {
+      "id": "S13",
+      "name": "lab_reader cannot select personal email, phone or date of birth",
+      "evidence": {
+        "attempts": [
+          {
+            "role": "lab_reader",
+            "sql": "SELECT email FROM lab_tracker.person LIMIT 1",
+            "accepted": false,
+            "sqlstate": "42501",
+            "message": "permission denied for table person"
+          },
+          {
+            "role": "lab_reader",
+            "sql": "SELECT phone FROM lab_tracker.person LIMIT 1",
+            "accepted": false,
+            "sqlstate": "42501",
+            "message": "permission denied for table person"
+          },
+          {
+            "role": "lab_reader",
+            "sql": "SELECT date_of_birth FROM lab_tracker.person LIMIT 1",
+            "accepted": false,
+            "sqlstate": "42501",
+            "message": "permission denied for table person"
+          }
+        ]
+      },
+      "passed": true
+    },
+    {
+      "id": "S14",
+      "name": "lab_app cannot select personal email, phone or date of birth",
+      "evidence": {
+        "attempts": [
+          {
+            "role": "lab_app",
+            "sql": "SELECT email FROM lab_tracker.person LIMIT 1",
+            "accepted": false,
+            "sqlstate": "42501",
+            "message": "permission denied for table person"
+          },
+          {
+            "role": "lab_app",
+            "sql": "SELECT phone FROM lab_tracker.person LIMIT 1",
+            "accepted": false,
+            "sqlstate": "42501",
+            "message": "permission denied for table person"
+          },
+          {
+            "role": "lab_app",
+            "sql": "SELECT date_of_birth FROM lab_tracker.person LIMIT 1",
+            "accepted": false,
+            "sqlstate": "42501",
+            "message": "permission denied for table person"
+          }
+        ]
+      },
+      "passed": true
+    },
+    {
+      "id": "S15",
+      "name": "runtime business role can read its permitted identity projection",
+      "evidence": {
+        "role": "lab_web_demo",
+        "sql": "SELECT person_id,full_name,status FROM lab_tracker.person LIMIT 1",
+        "accepted": true,
+        "row_count": 1
+      },
+      "passed": true
+    },
+    {
+      "id": "S16",
+      "name": "runtime business role cannot read sensitive personal columns",
+      "evidence": {
+        "attempts": [
+          {
+            "role": "lab_web_demo",
+            "sql": "SELECT email FROM lab_tracker.person LIMIT 1",
+            "accepted": false,
+            "sqlstate": "42501",
+            "message": "permission denied for table person"
+          },
+          {
+            "role": "lab_web_demo",
+            "sql": "SELECT phone FROM lab_tracker.person LIMIT 1",
+            "accepted": false,
+            "sqlstate": "42501",
+            "message": "permission denied for table person"
+          },
+          {
+            "role": "lab_web_demo",
+            "sql": "SELECT date_of_birth FROM lab_tracker.person LIMIT 1",
+            "accepted": false,
+            "sqlstate": "42501",
+            "message": "permission denied for table person"
+          }
+        ]
+      },
+      "passed": true
+    },
+    {
+      "id": "S17",
+      "name": "authentication role cannot read business grant budgets",
+      "evidence": {
+        "role": "lab_web_auth",
+        "sql": "SELECT total_budget,remaining_budget FROM lab_tracker.research_grant LIMIT 1",
+        "accepted": false,
+        "sqlstate": "42501",
+        "message": "permission denied for schema lab_tracker"
+      },
+      "passed": true
+    },
+    {
+      "id": "S18",
+      "name": "column GRANT permits access and REVOKE removes that access",
+      "evidence": {
+        "grant": "GRANT SELECT(phone) ON lab_tracker.person TO lab_reader",
+        "revoke": "REVOKE SELECT(phone) ON lab_tracker.person FROM lab_reader",
+        "role": "lab_reader",
+        "sql": "SELECT phone FROM lab_tracker.person LIMIT 1",
+        "after_grant": {
+          "accepted": true,
+          "row_count": 1
+        },
+        "after_revoke": {
+          "accepted": false,
+          "sqlstate": "42501",
+          "message": "permission denied for table person"
+        },
+        "rolled_back": true
+      },
+      "passed": true
+    },
+    {
+      "id": "S19",
+      "name": "role membership GRANT permits inherited access and REVOKE removes it",
+      "evidence": {
+        "grant": "CREATE ROLE lab_security_probe NOLOGIN; GRANT lab_reader TO lab_security_probe",
+        "revoke": "REVOKE lab_reader FROM lab_security_probe",
+        "role": "lab_security_probe",
+        "sql": "SELECT equipment_id FROM lab_tracker.equipment LIMIT 1",
+        "after_grant": {
+          "accepted": true,
+          "row_count": 1
+        },
+        "after_revoke": {
+          "accepted": false,
+          "sqlstate": "42501",
+          "message": "permission denied for schema lab_tracker"
+        },
+        "rolled_back": true
+      },
+      "passed": true
+    },
+    {
+      "id": "S20",
+      "name": "reader can read an explicitly granted operational view",
+      "evidence": {
+        "role": "lab_reader",
+        "sql": "SELECT borrow_id,equipment_id FROM lab_tracker.v_open_loans LIMIT 1",
+        "accepted": true,
+        "row_count": 1
+      },
+      "passed": true
+    }
+  ],
+  "database": {
+    "version": "PostgreSQL 18.6 (PGlite 0.5.10) on wasm32-unknown-emscripten, compiled by emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 6.0.5 (1db513782be24469589d7cb8a1f1834e9a33f271), 32-bit",
+    "database_date": "2026-11-21",
+    "timezone": "Asia/Ho_Chi_Minh"
+  },
+  "passed": true,
+  "completed_at": "2026-11-21T05:18:54.846Z",
+  "passed_checks": 8,
+  "failed_checks": 0,
+  "source_files_unchanged": true
+}

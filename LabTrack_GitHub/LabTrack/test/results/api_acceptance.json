@@ -1,0 +1,27 @@
+{
+  "started_at": "2026-11-21T05:27:55.892Z",
+  "finished_at": "2026-11-21T05:28:42.122Z",
+  "engine": "Node v24.22.3 / PGlite 0.5.10",
+  "exit_code": 0,
+  "tests": 45,
+  "passed": 45,
+  "failed": 0,
+  "skipped": 0,
+  "source_files_unchanged": true,
+  "source_sha256": {
+    "api.mjs": "d3d17d29324491d90579cdd8cf36a4830c4e909d4bec171ec27f4e8d244249fb",
+    "db.mjs": "6b4702fcc124b0625293e9605c6b98ee32ef3fa965c400e749b2de65b9f2cfe1",
+    "server.mjs": "4fd969e2d63b7ab401b930093758ad574235b09e4c923025977e37c9afaf9578",
+    "security_audit.mjs": "c0e1c28b80fe0cf7928d71bc82da628a7bb399734a7c0bdf5933149177e84479",
+    "backup_service.mjs": "063efdc644fe4dea86abbe040c715e389f8ade8c12301cc70e478b6f7e4dfbc7",
+    "backup.mjs": "9dab718f86015a82a07a707b0238365e6ba322f953c9d3c418798513284e91fb",
+    "auth.sql": "da8579fa49f7a1d62a0b096bcdc5f3d2c077c1f59d91f675e64027697ef4cfb9",
+    "api_migration.sql": "84f58f59d46109bd599fd3c0e04aab97dfa2408af6b5d757db684ebc0b69fcf5",
+    "public/app.js": "66764adc6ed619e9b0ad1433ecb14cf6a9921ce5cfe96fe67ca183282edb0904",
+    "sql/01_schema.sql": "cc28671e85f49198319813803208f138f94c418e8fa79c958280b66dd7ce76e7",
+    "sql/02_dataset_1200.sql": "a6e3d243cc7a88c67c6c947c589d4978cecd9f656502d9ad4383e6d823176c2c",
+    "sql/07_upgrade_normalized.sql": "ba92c44cf1849cbbf46e099436b26eb7826ae71205eafe9d2c505ea348f9fcb4",
+    "sql/run_security.mjs": "19bf1295b39968e442fc2c136342047080cab5ce8ae9a599074eeb57fc8b1d34"
+  },
+  "scope": "HTTP local acceptance, SQL injection, sensitive-data isolation, session/CSRF/Origin, durable redacted security audit, real HTTPS Secure-cookie, encrypted snapshots and scheduled backup, restore verification, both datasets and old Windows migration. The Faculty API clock test explicitly controls the clock query; SQL boundary tests are in sql/05_tests.sql. HTTP requests share one embedded PGlite connection; not native PostgreSQL concurrency."
+}
