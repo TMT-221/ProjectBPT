@@ -1,0 +1,17 @@
+{
+  "name": "UniLab — Database Project",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:5.2.6-24-bookworm",
+  "remoteUser": "node",
+  "containerEnv": { "TZ": "Asia/Ho_Chi_Minh" },
+  "forwardPorts": [4173],
+  "portsAttributes": {
+    "4173": {
+      "label": "UniLab",
+      "onAutoForward": "openBrowser",
+      "protocol": "http"
+    }
+  },
+  "postCreateCommand": "npm --prefix UniLab ci --no-audit --no-fund",
+  "postStartCommand": "node .devcontainer/start.mjs",
+  "waitFor": "postStartCommand"
+}
