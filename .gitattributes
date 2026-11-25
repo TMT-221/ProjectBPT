@@ -1,0 +1,5 @@
+# Preserve source bytes used by the report's SHA-256 records.
+* -text
+*.docx binary
+*.pdf binary
+*.png binary

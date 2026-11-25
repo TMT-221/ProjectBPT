@@ -1,0 +1,13 @@
+{
+  "name": "unilab-project",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "setup": "npm --prefix UniLab ci --no-audit --no-fund",
+    "start": "node UniLab/server.mjs",
+    "test": "npm --prefix UniLab test",
+    "validate": "node UniLab/test/run_sql_validation.mjs",
+    "security": "node UniLab/test/run_sql_security.mjs"
+  }
+}
