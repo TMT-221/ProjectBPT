@@ -1,0 +1,8 @@
+node_modules/
+.data/
+.logs/
+.backups/
+*.tar.gz
+*.labbackup
+.env
+*.log
