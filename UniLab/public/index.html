@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#6d38ce">
+  <meta name="description" content="UniLab – quản lý đề tài nghiên cứu, thiết bị và tài sản phòng thí nghiệm.">
+  <title>UniLab · Quản lý phòng thí nghiệm</title>
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./style.css">
+  <script src="./app.js" type="module"></script>
+</head>
+<body>
+  <svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" width="0" height="0">
+    <symbol id="i-flask" viewBox="0 0 24 24"><path d="M9 3h6m-5 0v6.5l-5.4 8.2A2.1 2.1 0 0 0 6.4 21h11.2a2.1 2.1 0 0 0 1.8-3.3L14 9.5V3M8 14h8"/><path d="M10.5 17h.01m3-1h.01"/></symbol>
+    <symbol id="i-dashboard" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.2"/><rect x="14" y="3" width="7" height="7" rx="1.2"/><rect x="3" y="14" width="7" height="7" rx="1.2"/><rect x="14" y="14" width="7" height="7" rx="1.2"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/><path d="M8 12h8m-8 4h5"/></symbol>
+    <symbol id="i-equipment" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8m-4-4v4m-5-9 3-3 3 3 3-3"/></symbol>
+    <symbol id="i-chemical" viewBox="0 0 24 24"><path d="M10 3h4m-3 0v7L5.5 18a2 2 0 0 0 1.7 3h9.6a2 2 0 0 0 1.7-3L13 10V3M8 15h8"/></symbol>
+    <symbol id="i-transfer" viewBox="0 0 24 24"><path d="M3 7h17m-4-4 4 4-4 4m5 6H4m4-4-4 4 4 4"/></symbol>
+    <symbol id="i-door" viewBox="0 0 24 24"><path d="M4 21h16M7 21V4a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v17m-4-9h.01"/></symbol>
+    <symbol id="i-cert" viewBox="0 0 24 24"><circle cx="12" cy="9" r="5"/><path d="m8.5 12.6-1.6 8.1 5.1-3 5.1 3-1.6-8.1"/></symbol>
+    <symbol id="i-tool" viewBox="0 0 24 24"><path d="M14.6 6.4a4.3 4.3 0 0 0-5.4 5.4l-5.4 5.4a2.1 2.1 0 0 0 3 3l5.4-5.4a4.3 4.3 0 0 0 5.4-5.4l-2.3 2.3-3-3Z"/><path d="m15 6 1.5-1.5m2 1.5 2-2"/></symbol>
+    <symbol id="i-report" viewBox="0 0 24 24"><path d="M4 4v16h16M8 16v-4m5 4V8m5 8V5"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20v-1a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v1"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></symbol>
+    <symbol id="i-atom" viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="10" ry="4"/><ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(120 12 12)"/><circle cx="12" cy="12" r="1.2"/></symbol>
+  </svg>
+  <a class="skip-link" href="#main-content">Chuyển tới nội dung</a>
+  <button type="button" id="sidebar-backdrop" class="sidebar-backdrop" data-action="close-menu" aria-label="Đóng thanh điều hướng"></button>
+  <aside id="sidebar" class="sidebar" aria-label="Thanh điều hướng">
+    <div class="drawer-heading"><strong>Điều hướng UniLab</strong><button type="button" class="icon-btn" data-action="close-menu" aria-label="Đóng điều hướng"><svg class="icon" aria-hidden="true"><use href="#i-chevron"></use></svg></button></div>
+    <nav class="nav" aria-label="Chức năng chính">
+      <div class="nav-group">
+        <p class="nav-label">KHÔNG GIAN LÀM VIỆC</p>
+        <a class="nav-link active" href="#dashboard" data-page="dashboard" aria-current="page"><svg class="icon"><use href="#i-dashboard"></use></svg><span>Tổng quan</span></a>
+        <a class="nav-link" href="#grants" data-page="grants"><svg class="icon"><use href="#i-folder"></use></svg><span>Đề tài nghiên cứu</span></a>
+        <a class="nav-link" href="#equipment" data-page="equipment"><svg class="icon"><use href="#i-equipment"></use></svg><span>Thiết bị</span></a>
+        <a class="nav-link" href="#chemicals" data-page="chemicals"><svg class="icon"><use href="#i-chemical"></use></svg><span>Kho hóa chất</span></a>
+      </div>
+      <div class="nav-group">
+        <p class="nav-label">VẬN HÀNH</p>
+        <a class="nav-link" href="#borrows" data-page="borrows"><svg class="icon"><use href="#i-transfer"></use></svg><span>Mượn trả thiết bị</span></a>
+        <a class="nav-link" href="#access" data-page="access"><svg class="icon"><use href="#i-door"></use></svg><span>Ra vào phòng</span></a>
+        <a class="nav-link" href="#certifications" data-page="certifications"><svg class="icon"><use href="#i-cert"></use></svg><span>Chứng nhận</span></a>
+        <a class="nav-link" href="#maintenance" data-page="maintenance"><svg class="icon"><use href="#i-tool"></use></svg><span>Bảo trì</span></a>
+      </div>
+      <div class="nav-group nav-group-report">
+        <p class="nav-label">PHÂN TÍCH</p>
+        <a class="nav-link" href="#reports" data-page="reports"><svg class="icon"><use href="#i-report"></use></svg><span>Báo cáo</span></a>
+      </div>
+    </nav>
+    <div class="sidebar-footer" id="sidebar-user">
+      <div class="environment-mark"><span class="signal-dot"></span></div>
+      <div><strong class="sidebar-session-title">Môi trường demo</strong><span class="sidebar-session-detail">Dữ liệu mô phỏng</span></div>
+    </div>
+  </aside>
+  <div class="workspace">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button type="button" id="menu-toggle" class="icon-btn menu-toggle" data-action="toggle-menu" aria-label="Mở điều hướng" aria-controls="sidebar" aria-expanded="false"><svg class="icon" aria-hidden="true"><use href="#i-menu"></use></svg></button>
+        <a class="brand" href="#dashboard" data-page="dashboard" aria-label="UniLab, trang tổng quan">
+      <span class="brand-mark"><svg class="icon"><use href="#i-flask"></use></svg></span>
+      <span class="brand-text"><strong>UniLab<span>.</span></strong><small>Quản lý phòng thí nghiệm</small></span>
+    </a>
+        <div class="header-location"><span>KHÔNG GIAN LÀM VIỆC</span><strong id="page-title">Tổng quan</strong></div>
+      </div>
+      <div class="topbar-right">
+        <span class="header-demo"><span class="signal-dot" aria-hidden="true"></span> Dữ liệu mô phỏng</span>
+        <div id="account-control"><button type="button" id="auth-button" class="account-button" data-action="account" aria-haspopup="dialog"><span class="account-avatar"><svg class="icon" aria-hidden="true"><use href="#i-user"></use></svg></span><span class="account-copy"><span class="account-label">Đăng nhập</span><span class="account-role">Tài khoản</span></span><svg class="icon account-arrow" aria-hidden="true"><use href="#i-down"></use></svg></button></div>
+      </div>
+    </header>
+    <main id="main-content" tabindex="-1">
+      <div id="app-view" class="app-view" aria-busy="true">
+        <section class="page-head workspace-welcome" aria-label="Tổng quan phòng thí nghiệm"><div class="page-intro"><div class="welcome-kicker">KHÔNG GIAN NGHIÊN CỨU</div><h1>Tổng quan phòng thí nghiệm</h1><p>Thiết bị, hóa chất và hoạt động nghiên cứu trong một không gian.</p></div></section>
+        <div class="loading-state" role="status"><span class="spinner"></span> Đang tải dữ liệu…</div>
+      </div>
+    </main>
+  </div>
+  <dialog id="app-dialog" class="app-dialog" aria-label="Thao tác UniLab"></dialog>
+  <div id="toast-region" class="toast-region" role="status" aria-live="polite"></div>
+  <noscript><p class="noscript-message">Bật JavaScript để sử dụng UniLab.</p></noscript>
+</body>
+</html>
