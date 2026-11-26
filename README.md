@@ -18,13 +18,13 @@
 | **Lớp** | `D24CQCN02-N` |
 | **Nhóm thực hiện** | **Nhóm BPT** |
 
-### Thành viên nhóm & phân công
+### Thành viên nhóm
 
 | STT | Họ và tên | MSSV | Phụ trách chính |
 | :---: | --- | :---: | --- |
-| 1 | **Trần Minh Trọng** | `N24DCCN177` | Cấu hình hệ thống, Backend API, bảo mật ứng dụng, sao lưu & triển khai |
-| 2 | **Nguyễn Trà Cao Quốc Bảo** | `N24DCCN096` | Thiết kế CSDL (EER → quan hệ), lược đồ SQL, trigger, phân quyền RBAC & kiểm thử |
-| 3 | **Hoàng Gia Phúc** | `N24DCCN152` | Thiết kế & xây dựng giao diện web (UI/UX) |
+| 1 | **Trần Minh Trọng** | `N24DCCN177` |
+| 2 | **Nguyễn Trà Cao Quốc Bảo** | `N24DCCN096` |
+| 3 | **Hoàng Gia Phúc** | `N24DCCN152` |
 
 ---
 
