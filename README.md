@@ -20,7 +20,7 @@
 
 ### Thành viên nhóm
 
-| STT | Họ và tên | MSSV | Phụ trách chính |
+| STT | Họ và tên | MSSV | 
 | :---: | --- | :---: | --- |
 | 1 | **Trần Minh Trọng** | `N24DCCN177` |
 | 2 | **Nguyễn Trà Cao Quốc Bảo** | `N24DCCN096` |
