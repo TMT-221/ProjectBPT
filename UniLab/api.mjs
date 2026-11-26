@@ -133,8 +133,14 @@ async function labsForUser(db,user) {
  const rows=await qs(db,`SELECT l.*,${labCertified('$1::bigint','l.safety_level')} AS has_cert,
   (t.local_time<time '07:00' OR t.local_time>=time '17:00') AS student_outside_hours,
   (t.local_time<time '06:00' OR t.local_time>=time '22:00') AS faculty_outside_hours,
-  EXISTS (SELECT 1 FROM ${S}.chemical c WHERE c.lab_id=l.lab_id::bigint AND c.hazard_level='Extreme') AS contains_extreme
+  EXISTS (SELECT 1 FROM ${S}.chemical c WHERE c.lab_id=l.lab_id::bigint AND c.hazard_level='Extreme') AS contains_extreme,
+  o.log_id::text AS open_log_id,${ts('o.entry_time')} AS open_entry_time
   FROM (${labSelect}) l CROSS JOIN (SELECT (clock_timestamp() AT TIME ZONE 'Asia/Ho_Chi_Minh')::time AS local_time) t
+  LEFT JOIN LATERAL (
+    SELECT a.log_id,a.entry_time FROM ${S}.access_log a
+    WHERE a.person_id=$1::bigint AND a.lab_id=l.lab_id::bigint AND a.exit_time IS NULL
+    ORDER BY a.entry_time DESC,a.log_id DESC LIMIT 1
+  ) o ON true
   ORDER BY l.lab_id::bigint`,[person(user)]);
  return rows.map(({has_cert,student_outside_hours,faculty_outside_hours,contains_extreme,...room})=>{
   const needsApproval=user.role==='student'&&student_outside_hours;
@@ -577,9 +583,19 @@ async function writeApi(db,path,body,user) {
         WHERE s.student_id=$1::bigint AND p.status='Active'`,[visitor]);
       if (!target) missing('Không tìm thấy sinh viên đang hoạt động.');
     }
+    const previousOpen=await qs(db,`SELECT a.log_id::text,l.lab_name
+      FROM ${S}.access_log a JOIN ${S}.laboratory l USING(lab_id)
+      WHERE a.person_id=$1::bigint AND a.exit_time IS NULL
+        AND a.entry_time<(clock_timestamp() AT TIME ZONE 'Asia/Ho_Chi_Minh')
+      ORDER BY a.entry_time,a.log_id`,[visitor]);
+    for (const prev of previousOpen) {
+      await qs(db,`SELECT ${S}.close_access($1::bigint,$2::bigint)`,[visitor,prev.log_id]);
+    }
     const row=await first(db,`SELECT ${S}.record_access($1::bigint,$2::bigint,$3::text,$4::bigint)::text AS id`,
       [visitor,lab,purpose,approved ? actor : null]);
-    return accessById(db,row.id);
+    const record=await accessById(db,row.id);
+    if (previousOpen.length) record.auto_closed_labs=previousOpen.map(x=>x.lab_name);
+    return record;
   }
   if ((match=/^\/access-logs\/([^/]+)\/exit$/.exec(path))) {
     fields(body,[]);

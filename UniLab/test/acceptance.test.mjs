@@ -192,6 +192,26 @@ test('Nghiệm thu UniLab trên API HTTP và PGlite',async t=>{
   const r=await expect(post('/access-logs/approved',faculty,{visitor_id:student.user.person_id,lab_id:'1',purpose:'Được giảng viên xác nhận'}),201);
   assert.equal(await scalar('SELECT approved_by::text FROM lab_tracker.access_log WHERE log_id=$1',[r.data.log_id]),faculty.user.person_id);
   await expect(post('/access-logs/'+r.data.log_id+'/exit',student),200);
+  const {data:v1}=await expect(post('/access-logs',tech,{lab_id:'1',purpose:'Làm việc tại Phòng máy tính nghiên cứu'}),201);
+  const labsAfterV1=(await expect(call('/labs',{actor:tech}),200)).data;
+  assert.equal(labsAfterV1.find(l=>l.lab_id==='1').open_log_id,v1.log_id);
+  assert.ok(labsAfterV1.find(l=>l.lab_id==='1').open_entry_time);
+  assert.equal(labsAfterV1.find(l=>l.lab_id==='3').open_log_id,null);
+  await new Promise(resolve=>setTimeout(resolve,5));
+  const {data:v2}=await expect(post('/access-logs',tech,{lab_id:'3',purpose:'Làm việc tại Phòng phản ứng hóa học'}),201);
+  assert.ok(Array.isArray(v2.auto_closed_labs)&&v2.auto_closed_labs.includes('Phòng máy tính nghiên cứu'));
+  assert.ok(await scalar('SELECT exit_time IS NOT NULL FROM lab_tracker.access_log WHERE log_id=$1',[v1.log_id]));
+  const labsAfterV2=(await expect(call('/labs',{actor:tech}),200)).data;
+  assert.equal(labsAfterV2.find(l=>l.lab_id==='1').open_log_id,null);
+  assert.equal(labsAfterV2.find(l=>l.lab_id==='3').open_log_id,v2.log_id);
+  const openBeforeFail=await scalar('SELECT count(*)::int FROM lab_tracker.access_log WHERE person_id=$1 AND exit_time IS NULL',[faculty.user.person_id]);
+  assert.ok(openBeforeFail>=1);
+  await expect(post('/access-logs',faculty,{lab_id:'3',purpose:'Thử vào phòng nguy hiểm',out_of_hours_reason:'Kiểm tra chứng nhận'}),403);
+  assert.equal(await scalar('SELECT count(*)::int FROM lab_tracker.access_log WHERE person_id=$1 AND exit_time IS NULL',[faculty.user.person_id]),openBeforeFail);
+  const tempTech=await login('technician');
+  await new Promise(resolve=>setTimeout(resolve,5));
+  await expect(post('/auth/logout',tempTech),204);
+  assert.ok(await scalar('SELECT exit_time IS NOT NULL FROM lab_tracker.access_log WHERE log_id=$1',[v2.log_id]));
  });
  await t.test('AT05: Phân bổ ngoài phòng hoặc đề tài tạm dừng bị chặn; đường hợp lệ hoạt động',async()=>{
   const n=await scalar('SELECT count(*)::int FROM lab_tracker.allocated_equip');

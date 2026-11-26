@@ -63,6 +63,10 @@ function date(value, time = false) {
   const stamp = match[3] + '/' + match[2] + '/' + match[1];
   return time && match[4] ? match[4] + ' · ' + stamp : stamp;
 }
+function timeOnly(value) {
+  const match = String(value || '').match(/[T ](\d{2}:\d{2})/);
+  return match ? match[1] : '';
+}
 function isoToday() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 }
@@ -77,8 +81,8 @@ function href(page, params) {
 function link(page, title, kind = 'secondary', glyph = '', params) {
   return '<a class="btn btn-' + kind + ' ' + kind + '" href="' + esc(href(page, params)) + '" data-page="' + page + '" data-query="' + esc(params?.toString() || '') + '">' + (glyph ? icon(glyph, 17) : '') + esc(title) + '</a>';
 }
-function button(action, title, { kind = 'secondary', glyph, id, label, small = false } = {}) {
-  return '<button type="button" class="btn btn-' + kind + ' ' + kind + (small ? ' small' : '') + '" data-action="' + action + '"' + (id != null ? ' data-id="' + esc(id) + '"' : '') + (label != null ? ' data-label="' + esc(label) + '"' : '') + '>' + (glyph ? icon(glyph, 17) : '') + esc(title) + '</button>';
+function button(action, title, { kind = 'secondary', glyph, id, label, small = false, extra = '' } = {}) {
+  return '<button type="button" class="btn btn-' + kind + ' ' + kind + (small ? ' small' : '') + '" data-action="' + action + '"' + (id != null ? ' data-id="' + esc(id) + '"' : '') + (label != null ? ' data-label="' + esc(label) + '"' : '') + extra + '>' + (glyph ? icon(glyph, 17) : '') + esc(title) + '</button>';
 }
 function rowButton(action, title, id, label, glyph = 'right') {
   return button(action, title, { id, label, small: true, kind: 'ghost', glyph });
@@ -291,12 +295,26 @@ function dashboard(data) {
   const labsRows = data?.labs || [];
   const labCards = labsRows.length ? '<div class="lab-grid">' + labsRows.map(row => {
     const count = Math.max(0, Number(row.equipment_count) || 0), availableCount = Math.max(0, Number(row.available_count) || 0);
-    const certLocked = !!user && row.has_cert === false;
-    return '<article class="lab-card' + (certLocked ? ' is-locked' : '') + '"><div class="lab-card-top"><span class="row-icon">' + icon('lab', 21) + '</span>' + badge(row.safety_level) + '</div>' +
+    const inside = !!user && !!row.open_log_id;
+    const certLocked = !!user && !inside && row.has_cert === false;
+    const accessLocked = !!user && !inside && !certLocked && canWrite() && row.can_enter === false;
+    const roomBtn = inside
+      ? button('quick-exit-lab', 'Ra khỏi phòng', { id: row.open_log_id, label: row.lab_name, kind: 'danger', glyph: 'access', small: true })
+      : (!!user && canWrite() && row.can_enter === true
+        ? button('quick-enter-lab', 'Vào phòng', { id: row.lab_id, label: row.lab_name, kind: 'primary', glyph: 'plus', small: true, extra: row.requires_out_of_hours_reason ? ' data-reason="1"' : '' })
+        : '');
+    const statusNote = inside
+      ? '<p class="lab-ok-note">' + icon('check', 14) + '<span>Đang ở trong phòng từ ' + esc(timeOnly(row.open_entry_time) || 'hiện tại') + '</span></p>'
+      : certLocked
+        ? '<p class="lab-lock-note">' + icon('lock', 14) + '<span>Thiếu chứng nhận bắt buộc — không thể vào phòng hoặc mượn thiết bị</span></p>'
+        : accessLocked
+          ? '<p class="lab-lock-note">' + icon('lock', 14) + '<span>' + esc(row.entry_block_reason || 'Không đủ điều kiện tự vào phòng.') + '</span></p>'
+          : '';
+    return '<article class="lab-card' + (inside ? ' is-inside' : (certLocked || accessLocked) ? ' is-locked' : '') + '"><div class="lab-card-top"><span class="row-icon">' + icon('lab', 21) + '</span>' + badge(row.safety_level) + '</div>' +
       '<h3>' + shown(row.lab_name) + '</h3><p class="lab-card-meta">' + esc([row.building ? 'Tòa ' + row.building : '', row.room_number ? 'Phòng ' + row.room_number : ''].filter(Boolean).join(' · ')) + '</p>' +
       '<div class="lab-capacity"><span>Thiết bị khả dụng</span><strong>' + fmt(availableCount) + ' / ' + fmt(count) + '</strong></div><progress value="' + Math.min(availableCount, count) + '" max="' + Math.max(1, count) + '" aria-label="' + esc(row.lab_name + ': ' + availableCount + ' trên ' + count + ' thiết bị khả dụng') + '"></progress>' +
-      (certLocked ? '<p class="lab-lock-note">' + icon('lock', 14) + '<span>Thiếu chứng nhận bắt buộc — không thể vào phòng hoặc mượn thiết bị</span></p>' : '') +
-      '<div class="lab-card-footer"><span>' + icon('user', 15) + fmt(row.capacity) + ' người</span>' + link('equipment', certLocked ? 'Xem thiết bị' : 'Thiết bị', 'ghost', 'right', new URLSearchParams({ lab_id: row.lab_id })) + '</div></article>';
+      statusNote +
+      '<div class="lab-card-footer"><span>' + icon('user', 15) + fmt(row.capacity) + ' người</span><div class="lab-card-actions">' + roomBtn + link('equipment', certLocked ? 'Xem thiết bị' : 'Thiết bị', 'ghost', 'right', new URLSearchParams({ lab_id: row.lab_id })) + '</div></div></article>';
   }).join('') + '</div>' : empty('Chưa có phòng thí nghiệm', 'Danh sách phòng sẽ được hiển thị tại đây.', 'lab');
   return welcome + '<div class="workspace-bento">' + spotlight + availability + '</div>' + pulse + quick + '<div class="dashboard-grid">' +
     panel('Nhịp hoạt động mượn trả', 'Lượt mượn toàn hệ thống theo quý và số lượt đã trả', chart(data?.borrow_chart || []), link('borrows', 'Lượt mượn của tôi', 'ghost', 'right')) +
@@ -402,13 +420,24 @@ async function showAccess() {
   const [data, rooms] = await Promise.all([list('/me/access'), canWrite() ? request('/labs') : []]);
   const roomRows = asRows(rooms);
   const canEnter = roomRows.some(room => room.can_enter === true);
-  const accessCards = roomRows.length ? panel('Điều kiện truy cập theo phòng', 'Hệ thống tự kiểm tra khung giờ (BR04/BR27/BR28) và chứng nhận an toàn còn hiệu lực (BR05).',
-    '<div class="lab-grid">' + roomRows.map(room => '<article class="lab-card' + (room.can_enter ? '' : ' is-locked') + '"><div class="lab-card-top"><span class="row-icon">' + icon('lab', 21) + '</span>' + badge(room.safety_level) + '</div>' +
-      '<h3>' + shown(room.lab_name) + '</h3>' +
-      (room.can_enter
-        ? '<p class="lab-ok-note">' + icon('check', 14) + '<span>Đủ điều kiện tự ghi lượt vào hiện tại</span></p>'
-        : '<p class="lab-lock-note">' + icon('lock', 14) + '<span>' + esc(room.entry_block_reason || 'Không đủ điều kiện truy cập.') + '</span></p>') +
-      '</article>').join('') + '</div>') : '';
+  const accessCards = roomRows.length ? panel('Điều kiện truy cập & ra vào trực tiếp', 'Bấm Vào phòng / Ra khỏi phòng để tự ghi nhận nhật ký theo giờ Việt Nam thực tế; hệ thống tự đóng lượt cũ khi bạn chuyển phòng hoặc đăng xuất.',
+    '<div class="lab-grid">' + roomRows.map(room => {
+      const inside = !!room.open_log_id;
+      const roomAction = inside
+        ? button('quick-exit-lab', 'Ra khỏi phòng', { id: room.open_log_id, label: room.lab_name, kind: 'danger', glyph: 'access', small: true })
+        : room.can_enter
+          ? button('quick-enter-lab', 'Vào phòng', { id: room.lab_id, label: room.lab_name, kind: 'primary', glyph: 'plus', small: true, extra: room.requires_out_of_hours_reason ? ' data-reason="1"' : '' })
+          : '';
+      return '<article class="lab-card' + (inside ? ' is-inside' : room.can_enter ? '' : ' is-locked') + '"><div class="lab-card-top"><span class="row-icon">' + icon('lab', 21) + '</span>' + badge(room.safety_level) + '</div>' +
+        '<h3>' + shown(room.lab_name) + '</h3>' +
+        (inside
+          ? '<p class="lab-ok-note">' + icon('check', 14) + '<span>Đang ở trong phòng từ ' + esc(timeOnly(room.open_entry_time) || 'hiện tại') + ' — bấm Ra khỏi phòng để tự ghi giờ ra</span></p>'
+          : room.can_enter
+            ? '<p class="lab-ok-note">' + icon('check', 14) + '<span>' + (room.requires_out_of_hours_reason ? 'Đủ chứng nhận — cần nêu lý do ngoài giờ (BR27) khi vào phòng' : 'Đủ điều kiện vào phòng hiện tại — bấm để tự ghi nhật ký') + '</span></p>'
+            : '<p class="lab-lock-note">' + icon('lock', 14) + '<span>' + esc(room.entry_block_reason || 'Không đủ điều kiện truy cập.') + '</span></p>') +
+        (roomAction ? '<div class="lab-card-footer lab-card-footer-end">' + roomAction + '</div>' : '') +
+        '</article>';
+    }).join('') + '</div>') : '';
   const html = table([
     ['Phòng thí nghiệm', row => nameCell('lab', row.lab_name, 'Lượt #' + row.log_id)],
     ['Mục đích', row => shown(row.purpose)],
@@ -603,7 +632,7 @@ function showAccount() {
   if (user) {
     modal('Tài khoản của bạn', details([
       ['Họ tên', shown(user.name)], ['Vai trò', shown(displayRole())], ['Email', shown(user.email)],
-    ]) + (readOnly() ? actionNote(readOnlyText) : '') + formError(), button('logout', 'Đăng xuất', { glyph: 'access', kind: 'secondary' }));
+    ]) + (readOnly() ? actionNote(readOnlyText) : actionNote('Nếu bạn đang ở trong phòng, hệ thống sẽ tự động ghi giờ ra trong nhật ký khi đăng xuất.')) + formError(), button('logout', 'Đăng xuất', { glyph: 'access', kind: 'secondary' }));
     return;
   }
   const demos = [
@@ -721,8 +750,8 @@ async function showAccessForm(approved, search = '', draft = {}) {
     const options = [['', 'Chọn sinh viên'], ...visitors.map(x => [x.person_id || x.student_id, (x.full_name || x.name) + ' · ' + x.student_code])];
     const approvalRooms = roomChoicesForVisitor(rooms, visitors, draft.visitor_id);
     const roomChoices = approved ? approvalRooms : [['', 'Chọn phòng thí nghiệm'], ...rooms.map(x => [x.lab_id,
-      x.lab_name + ' · ' + (x.can_enter === true ? status[x.safety_level]?.[0] || x.safety_level : x.entry_block_reason || 'Không đủ điều kiện'),
-      x.can_enter !== true])];
+      x.lab_name + ' · ' + (x.open_log_id ? 'Đang ở trong phòng từ ' + (timeOnly(x.open_entry_time) || 'hiện tại') : x.can_enter === true ? status[x.safety_level]?.[0] || x.safety_level : x.entry_block_reason || 'Không đủ điều kiện'),
+      x.can_enter !== true || !!x.open_log_id])];
     const facultyReason = !approved && role() === 'faculty';
     const reasonRequired = facultyReason && rooms.some(room => room.requires_out_of_hours_reason === true);
     const fields = (approved ? field('Sinh viên', select('visitor_id', 'Sinh viên', options, draft.visitor_id, true), true) : '') +
@@ -950,6 +979,37 @@ async function action(control) {
     case 'enter-lab': await showAccessForm(false); break;
     case 'approve-access': await showAccessForm(true); break;
     case 'exit-lab': confirm('Ghi giờ ra', 'Kết thúc lượt truy cập tại ' + label + '?', '/access-logs/' + encodeURIComponent(id) + '/exit', 'Đã ghi nhận giờ ra.'); break;
+    case 'quick-enter-lab': {
+      if (control.dataset.reason === '1') {
+        await showAccessForm(false, '', { lab_id: id, purpose: 'Làm việc tại ' + label });
+        break;
+      }
+      control.disabled = true;
+      try {
+        const result = await post('/access-logs', { lab_id: id, purpose: 'Làm việc tại ' + label });
+        labsCache = undefined;
+        const stamp = result?.entry_time ? ' (' + date(result.entry_time, true) + ')' : '';
+        const switched = result?.auto_closed_labs?.length ? 'Đã tự ghi giờ ra khỏi ' + result.auto_closed_labs.join(', ') + ' và vào ' : 'Đã tự ghi lượt vào ';
+        toast(switched + label + stamp + '.');
+        await loadPage({ preserve: true });
+      } finally {
+        control.disabled = false;
+      }
+      break;
+    }
+    case 'quick-exit-lab': {
+      control.disabled = true;
+      try {
+        const result = await post('/access-logs/' + encodeURIComponent(id) + '/exit', {});
+        labsCache = undefined;
+        const stamp = result?.exit_time ? ' (' + date(result.exit_time, true) + ')' : '';
+        toast('Đã tự ghi giờ ra khỏi ' + label + stamp + '.');
+        await loadPage({ preserve: true });
+      } finally {
+        control.disabled = false;
+      }
+      break;
+    }
     case 'chemical-issue': await showChemicalForm(id, label, false); break;
     case 'chemical-receipt': await showChemicalForm(id, label, true); break;
     case 'chemical-location': {
@@ -1047,7 +1107,9 @@ document.addEventListener('submit', event => {
       const suffix = result?.movement_id
         ? ' Mã phiếu #' + result.movement_id + '. Tồn mới: ' + fmt(result.balance_after) + (result.unit ? ' ' + result.unit : '') + '.'
         : endpoint === '/access-logs/approved' && result?.log_id
-          ? ' Lượt #' + result.log_id + ' nằm trong nhật ký của sinh viên.' : '';
+          ? ' Lượt #' + result.log_id + ' nằm trong nhật ký của sinh viên.'
+          : result?.auto_closed_labs?.length
+            ? ' Đã tự ghi giờ ra khỏi ' + result.auto_closed_labs.join(', ') + '.' : '';
       return form.dataset.success + suffix;
     });
   } else if (form.dataset.form === 'student-search') {

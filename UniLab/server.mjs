@@ -129,6 +129,12 @@ export function createApp(db,{logger=console,audit,tls,publicOrigin}={}){
    if(method==='POST'){
     if(!same(req.headers['x-csrf-token'],user.csrf)) throw fail(403,'Phiên thao tác không hợp lệ. Hãy tải lại trang.','CSRF_REQUIRED');
     if(route==='/auth/logout'){
+     if(user.permissions.includes('member')) await withRole(db,'business',async tx=>{
+      const {rows}=await tx.query(`SELECT log_id::text FROM lab_tracker.access_log
+       WHERE person_id=$1::bigint AND exit_time IS NULL
+         AND entry_time<(clock_timestamp() AT TIME ZONE 'Asia/Ho_Chi_Minh')`,[user.person_id]);
+      for(const row of rows) await tx.query('SELECT lab_tracker.close_access($1::bigint,$2::bigint)',[user.person_id,row.log_id]);
+     });
      await signOut(db,session);
      await record({action:'auth.logout',outcome:'success',status:204});
      res.setHeader('Set-Cookie',cookie('',!!publicOrigin||req.socket.encrypted));
