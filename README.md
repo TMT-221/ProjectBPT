@@ -20,11 +20,11 @@
 
 ### Thành viên nhóm
 
-| STT | Họ và tên | MSSV | 
-| :---: | --- | :---: |
-| 1 | **Trần Minh Trọng** | `N24DCCN177` |
-| 2 | **Nguyễn Trà Cao Quốc Bảo** | `N24DCCN096` |
-| 3 | **Hoàng Gia Phúc** | `N24DCCN152` |
+| STT | Họ và tên | MSSV | Tên tài khoản github
+| :---: | --- | :---: | --- |
+| 1 | **Trần Minh Trọng** | `N24DCCN177` | **TMT-221** |
+| 2 | **Nguyễn Trà Cao Quốc Bảo** | `N24DCCN096` | **quocbao4399-spec** |
+| 3 | **Hoàng Gia Phúc** | `N24DCCN152` | **DakLak-coder** |
 
 ---
 
