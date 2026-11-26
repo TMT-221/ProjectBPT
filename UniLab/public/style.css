@@ -64,6 +64,10 @@ strong, b { font-weight: 650; }
 .header-location > span { font-size:10px; letter-spacing:.1em; color:var(--muted); }
 .header-location strong { font-size:13px; color:var(--ink); font-weight:600; }
 .header-demo { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--muted); }
+.header-clock { display:inline-flex; align-items:center; gap:6px; padding:6px 11px; border:1px solid var(--line); border-radius:10px; background:var(--surface-tint); color:var(--ink); font-size:12px; line-height:1.2; white-space:nowrap; font-variant-numeric:tabular-nums; }
+.header-clock .icon { width:15px; height:15px; color:var(--blue); }
+.header-clock time { font-weight:650; letter-spacing:.01em; }
+.header-clock small { color:var(--muted); font-size:10px; font-weight:650; letter-spacing:.04em; }
 .signal-dot { width:7px; height:7px; border-radius:50%; background:var(--blue); flex:none; }
 .account-button { display:flex; align-items:center; gap:10px; min-height:46px; padding:4px 8px; border:0; border-radius:12px; background:transparent; color:var(--ink); text-align:left; }
 .account-button:hover { background:var(--surface-tint); }
@@ -439,8 +443,10 @@ input:not([type="checkbox"]):not([type="radio"]):focus, select:focus, textarea:f
   .workspace { padding-top:72px; }
   .topbar { height:72px; padding-inline:16px; gap:12px; }
   .topbar-left { gap:12px; }
-  .topbar-right { gap:0; }
+  .topbar-right { gap:8px; }
   .header-demo,.header-location,.brand-text small,.account-role,.account-arrow { display:none; }
+  .header-clock { padding:5px 8px; gap:5px; font-size:11px; }
+  .header-clock small { display:none; }
   .brand-mark { width:34px; height:34px; border-radius:10px; }
   .brand-mark .icon { width:22px; height:22px; }
   .brand-text strong { font-size:23px; }

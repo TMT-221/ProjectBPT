@@ -1067,6 +1067,33 @@ window.addEventListener('hashchange', () => {
   closeDialog();
   void loadPage();
 });
+const vnClockEl = document.querySelector('#vn-clock');
+const vnClockValue = document.querySelector('#vn-clock-value');
+const vnTimeFormatter = new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' });
+const vnFullDateFormatter = new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
+let lastBoundaryKey = '';
+function updateVietnamClock() {
+  const now = new Date();
+  const timeText = vnTimeFormatter.format(now);
+  if (vnClockValue) {
+    vnClockValue.textContent = timeText;
+    vnClockValue.dateTime = isoToday() + 'T' + timeText + '+07:00';
+  }
+  if (vnClockEl) {
+    vnClockEl.title = 'Giờ Việt Nam (UTC+7): ' + timeText + ' · ' + vnFullDateFormatter.format(now);
+  }
+  const hm = timeText.slice(0, 5);
+  const key = isoToday() + ' ' + hm;
+  if (lastBoundaryKey && key !== lastBoundaryKey && ['00:00', '06:00', '07:00', '17:00', '22:00'].includes(hm)) {
+    labsCache = undefined;
+    if (user && !dialog.open && !modalLock && ['access', 'dashboard', 'equipment', 'borrows', 'certifications', 'chemicals'].includes(current.page)) {
+      void loadPage({ preserve: true });
+    }
+  }
+  lastBoundaryKey = key;
+}
+updateVietnamClock();
+setInterval(updateVietnamClock, 1000);
 current = initialPage;
 syncHeader();
 try {
