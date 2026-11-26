@@ -226,7 +226,7 @@ END $$;
 CREATE TRIGGER tr_access BEFORE INSERT OR UPDATE ON access_log FOR EACH ROW EXECUTE FUNCTION enforce_access();
 
 CREATE FUNCTION enforce_borrow() RETURNS trigger LANGUAGE plpgsql SET search_path=lab_tracker,pg_catalog,pg_temp AS $$
-DECLARE v_state text; v_count integer;
+DECLARE v_state text; v_lab bigint; v_level text; v_name text; v_cert_id bigint; v_required text[]; v_count integer;
 BEGIN
  IF TG_OP='UPDATE' AND (NEW.person_id,NEW.equipment_id,NEW.borrow_date,NEW.expected_return_date) IS DISTINCT FROM (OLD.person_id,OLD.equipment_id,OLD.borrow_date,OLD.expected_return_date) THEN
   RAISE EXCEPTION 'BR21: loan identity and original due date are immutable';
@@ -236,10 +236,33 @@ BEGIN
  END IF;
  UPDATE person SET status=status WHERE person_id=NEW.person_id AND status='Active';
  IF NOT FOUND AND TG_OP='INSERT' THEN RAISE EXCEPTION 'BR14: active borrower required'; END IF;
- SELECT current_status INTO v_state FROM equipment WHERE equipment_id=NEW.equipment_id FOR UPDATE;
+ SELECT current_status, lab_id INTO v_state, v_lab FROM equipment WHERE equipment_id=NEW.equipment_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION 'BR25: equipment not found'; END IF;
  IF TG_OP='INSERT' AND NEW.actual_return_date IS NULL THEN
   IF v_state<>'Available' THEN RAISE EXCEPTION 'BR13: equipment unavailable: %',v_state; END IF;
+  SELECT safety_level INTO v_level FROM laboratory WHERE lab_id=v_lab FOR SHARE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'BR25: laboratory not found'; END IF;
+  IF v_level = 'Restricted' THEN
+   v_required := ARRAY['An toàn phòng thí nghiệm cơ bản'];
+  ELSIF v_level = 'Hazardous' THEN
+   v_required := ARRAY['An toàn phòng thí nghiệm cơ bản',
+                       'Xử lý dung môi dễ cháy', 'Xử lý axit oxy hóa mạnh'];
+  ELSE
+   v_required := ARRAY[]::text[];
+  END IF;
+  FOREACH v_name IN ARRAY v_required LOOP
+   SELECT cert_id INTO v_cert_id FROM certification
+   WHERE cert_name = v_name FOR SHARE;
+   IF NOT FOUND THEN
+    RAISE EXCEPTION 'BR05: required certificate type is not configured: %', v_name;
+   END IF;
+   PERFORM 1 FROM has_certification
+   WHERE person_id = NEW.person_id AND cert_id = v_cert_id
+     AND issue_date <= NEW.borrow_date AND expiry_date >= NEW.borrow_date FOR SHARE;
+   IF NOT FOUND THEN
+    RAISE EXCEPTION 'BR05: required certificate is missing or expired: %', v_name;
+   END IF;
+  END LOOP;
   SELECT count(*) INTO v_count FROM borrow_transaction WHERE person_id=NEW.person_id AND actual_return_date IS NULL;
   IF v_count>=3 THEN RAISE EXCEPTION 'BR14: maximum three open loans'; END IF;
   UPDATE equipment SET current_status='In Use' WHERE equipment_id=NEW.equipment_id;

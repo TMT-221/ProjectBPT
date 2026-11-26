@@ -17,7 +17,7 @@ const status = {
   'Under Maintenance': ['Đang bảo trì','warning'], Retired: ['Ngừng sử dụng','neutral'],
   Borrowed: ['Đang mượn','info'], Returned: ['Đã trả','success'], Overdue: ['Quá hạn','danger'],
   Active: ['Đang hoạt động','success'], Completed: ['Hoàn thành','success'], Planned: ['Dự kiến','info'],
-  Suspended: ['Tạm dừng','warning'], Valid: ['Còn hiệu lực','success'], Expired: ['Hết hạn','danger'],
+  Suspended: ['Tạm dừng','warning'], Valid: ['Còn hiệu lực','success'], Expired: ['Hết hạn','danger'], Pending: ['Chưa hiệu lực','warning'],
   Normal: ['Thông thường','success'], Restricted: ['Hạn chế','warning'], Hazardous: ['Nguy hiểm','danger'],
   None: ['Không nguy hiểm','neutral'], Low: ['Thấp','success'], Medium: ['Trung bình','warning'],
   High: ['Cao','danger'], Extreme: ['Rất cao','danger'], Open: ['Đang mở','info'], Closed: ['Đã đóng','success'],
@@ -291,10 +291,12 @@ function dashboard(data) {
   const labsRows = data?.labs || [];
   const labCards = labsRows.length ? '<div class="lab-grid">' + labsRows.map(row => {
     const count = Math.max(0, Number(row.equipment_count) || 0), availableCount = Math.max(0, Number(row.available_count) || 0);
-    return '<article class="lab-card"><div class="lab-card-top"><span class="row-icon">' + icon('lab', 21) + '</span>' + badge(row.safety_level) + '</div>' +
+    const certLocked = !!user && row.has_cert === false;
+    return '<article class="lab-card' + (certLocked ? ' is-locked' : '') + '"><div class="lab-card-top"><span class="row-icon">' + icon('lab', 21) + '</span>' + badge(row.safety_level) + '</div>' +
       '<h3>' + shown(row.lab_name) + '</h3><p class="lab-card-meta">' + esc([row.building ? 'Tòa ' + row.building : '', row.room_number ? 'Phòng ' + row.room_number : ''].filter(Boolean).join(' · ')) + '</p>' +
       '<div class="lab-capacity"><span>Thiết bị khả dụng</span><strong>' + fmt(availableCount) + ' / ' + fmt(count) + '</strong></div><progress value="' + Math.min(availableCount, count) + '" max="' + Math.max(1, count) + '" aria-label="' + esc(row.lab_name + ': ' + availableCount + ' trên ' + count + ' thiết bị khả dụng') + '"></progress>' +
-      '<div class="lab-card-footer"><span>' + icon('user', 15) + fmt(row.capacity) + ' người</span>' + link('equipment', 'Thiết bị', 'ghost', 'right', new URLSearchParams({ lab_id: row.lab_id })) + '</div></article>';
+      (certLocked ? '<p class="lab-lock-note">' + icon('lock', 14) + '<span>Thiếu chứng nhận bắt buộc — không thể vào phòng hoặc mượn thiết bị</span></p>' : '') +
+      '<div class="lab-card-footer"><span>' + icon('user', 15) + fmt(row.capacity) + ' người</span>' + link('equipment', certLocked ? 'Xem thiết bị' : 'Thiết bị', 'ghost', 'right', new URLSearchParams({ lab_id: row.lab_id })) + '</div></article>';
   }).join('') + '</div>' : empty('Chưa có phòng thí nghiệm', 'Danh sách phòng sẽ được hiển thị tại đây.', 'lab');
   return welcome + '<div class="workspace-bento">' + spotlight + availability + '</div>' + pulse + quick + '<div class="dashboard-grid">' +
     panel('Nhịp hoạt động mượn trả', 'Lượt mượn toàn hệ thống theo quý và số lượt đã trả', chart(data?.borrow_chart || []), link('borrows', 'Lượt mượn của tôi', 'ghost', 'right')) +
@@ -327,15 +329,27 @@ function equipmentGlyph(row) {
 async function showEquipment() {
   const [data, rooms] = await Promise.all([list('/equipment'), labs()]);
   const rows = asRows(data);
-  const cards = rows.length ? '<div class="equipment-grid">' + rows.map(row => '<article class="equipment-card"><div class="equipment-card-top"><div class="equipment-visual">' +
-    icon(equipmentGlyph(row), 47) + '<span>TB-' + shown(row.equipment_id) + '</span></div>' + badge(row.current_status) + '</div><div class="equipment-card-body"><h3>' + shown(row.equipment_name) +
-    '</h3><p class="equipment-serial">Sê-ri: <span>' + shown(row.serial_number) + '</span></p><dl class="equipment-card-meta"><div><dt>Phòng thí nghiệm</dt><dd>' + shown(row.lab_name) +
-    '</dd></div><div><dt>Ngày mua</dt><dd>' + date(row.purchase_date) + '</dd></div></dl></div><div class="equipment-card-footer">' +
-    button('equipment-detail', 'Chi tiết & thao tác', { id: row.equipment_id, glyph: 'arrow' }) + '</div></article>').join('') + '</div>' : empty('Không có thiết bị phù hợp', 'Thử thay đổi từ khóa hoặc bộ lọc.', 'equipment');
+  const roomById = new Map(rooms.map(room => [String(room.lab_id), room]));
+  const selectedRoom = roomById.get(String(current.params.get('lab_id') || ''));
+  const labNotice = selectedRoom && selectedRoom.has_cert === false
+    ? '<div class="catalog-notice">' + actionNote(selectedRoom.lab_name + ' (' + (status[selectedRoom.safety_level]?.[0] || selectedRoom.safety_level) + '): bạn chưa đủ chứng nhận bắt buộc còn hiệu lực, chỉ có thể xem thông tin — không thể vào phòng hoặc mượn thiết bị tại đây.') + '</div>'
+    : '';
+  const cards = rows.length ? '<div class="equipment-grid">' + rows.map(row => {
+    const room = roomById.get(String(row.lab_id));
+    const locked = row.has_lab_cert === false || room?.has_cert === false;
+    const safety = row.safety_level || room?.safety_level;
+    return '<article class="equipment-card"><div class="equipment-card-top"><div class="equipment-visual">' +
+      icon(equipmentGlyph(row), 47) + '<span>TB-' + shown(row.equipment_id) + '</span></div>' + badge(row.current_status) + '</div><div class="equipment-card-body"><h3>' + shown(row.equipment_name) +
+      '</h3><p class="equipment-serial">Sê-ri: <span>' + shown(row.serial_number) + '</span></p><dl class="equipment-card-meta"><div><dt>Phòng thí nghiệm</dt><dd class="equipment-lab-cell">' + shown(row.lab_name) +
+      (safety && safety !== 'Normal' ? ' ' + badge(safety) : '') + '</dd></div><div><dt>Ngày mua</dt><dd>' + date(row.purchase_date) + '</dd></div></dl>' +
+      (locked ? '<p class="lab-lock-note">' + icon('lock', 14) + '<span>Thiếu chứng nhận phòng — không thể mượn</span></p>' : '') +
+      '</div><div class="equipment-card-footer">' +
+      button('equipment-detail', locked ? 'Xem chi tiết' : 'Chi tiết & thao tác', { id: row.equipment_id, glyph: locked ? 'lock' : 'arrow' }) + '</div></article>';
+  }).join('') + '</div>' : empty('Không có thiết bị phù hợp', 'Thử thay đổi từ khóa hoặc bộ lọc.', 'equipment');
   return heading('equipment') + panel('Tìm thiết bị cho nghiên cứu', '', '<div class="catalog-layout">' + filters({
     search: 'Tìm tên hoặc số sê-ri', fields: filterSelect('lab_id', 'Phòng thí nghiệm', labOptions(rooms), current.params.get('lab_id')) +
       filterSelect('status', 'Trạng thái', enumOptions(['Available','In Use','Under Maintenance','Retired']), current.params.get('status')),
-  }) + catalogSummary(data, 'thiết bị phù hợp') + cards + pagination(data) + '</div>');
+  }) + labNotice + catalogSummary(data, 'thiết bị phù hợp') + cards + pagination(data) + '</div>');
 }
 async function showGrants() {
   const data = await list('/grants');
@@ -388,6 +402,13 @@ async function showAccess() {
   const [data, rooms] = await Promise.all([list('/me/access'), canWrite() ? request('/labs') : []]);
   const roomRows = asRows(rooms);
   const canEnter = roomRows.some(room => room.can_enter === true);
+  const accessCards = roomRows.length ? panel('Điều kiện truy cập theo phòng', 'Hệ thống tự kiểm tra khung giờ (BR04/BR27/BR28) và chứng nhận an toàn còn hiệu lực (BR05).',
+    '<div class="lab-grid">' + roomRows.map(room => '<article class="lab-card' + (room.can_enter ? '' : ' is-locked') + '"><div class="lab-card-top"><span class="row-icon">' + icon('lab', 21) + '</span>' + badge(room.safety_level) + '</div>' +
+      '<h3>' + shown(room.lab_name) + '</h3>' +
+      (room.can_enter
+        ? '<p class="lab-ok-note">' + icon('check', 14) + '<span>Đủ điều kiện tự ghi lượt vào hiện tại</span></p>'
+        : '<p class="lab-lock-note">' + icon('lock', 14) + '<span>' + esc(room.entry_block_reason || 'Không đủ điều kiện truy cập.') + '</span></p>') +
+      '</article>').join('') + '</div>') : '';
   const html = table([
     ['Phòng thí nghiệm', row => nameCell('lab', row.lab_name, 'Lượt #' + row.log_id)],
     ['Mục đích', row => shown(row.purpose)],
@@ -398,6 +419,7 @@ async function showAccess() {
   ], asRows(data), 'Chưa có lượt ra vào');
   return heading('access', (staff() ? button('approve-access', 'Phê duyệt lượt vào', { glyph: 'check' }) : '') +
       (canEnter ? button('enter-lab', 'Ghi lượt vào', { kind: 'primary', glyph: 'plus' }) : '')) +
+    accessCards +
     panel('Nhật ký ra vào của bạn', readOnly() ? readOnlyText : !canEnter ? (roomRows.find(room => room.entry_block_reason)?.entry_block_reason || 'Bạn hiện không thể tự ghi lượt vào phòng.') : '', filters({
       fields: filterSelect('status', 'Trạng thái', [['', 'Tất cả lượt'], ['open', 'Đang mở'], ['closed', 'Đã đóng']], current.params.get('status')),
     }) + catalogSummary(data, 'bản ghi phù hợp') + html + pagination(data));
@@ -624,7 +646,7 @@ async function showEquipmentDetail(id) {
     ], row.maintenance || [], 'Chưa có lịch bảo trì');
     const canBorrow = canWrite() && row.can_borrow === true;
     return () => modal(row.equipment_name, details([
-      ['Số sê-ri', shown(row.serial_number)], ['Trạng thái', badge(row.current_status)], ['Phòng thí nghiệm', shown(row.lab_name)], ['Ngày mua', date(row.purchase_date)],
+      ['Số sê-ri', shown(row.serial_number)], ['Trạng thái', badge(row.current_status)], ['Phòng thí nghiệm', shown(row.lab_name)], ['Mức an toàn phòng', badge(row.safety_level)], ['Ngày mua', date(row.purchase_date)],
     ]) + (!canBorrow ? actionNote(row.borrow_block_reason || (readOnly() ? readOnlyText : 'Hiện chưa thể mượn thiết bị này.')) : '') + part('Lịch sử mượn của bạn', borrowed) + part('Lịch sử bảo trì', maintenance),
     (canOperate() && row.can_start_maintenance === true ? button('new-maintenance', 'Tạo phiếu bảo trì', { id, label: row.equipment_name, glyph: 'maintenance' }) : '') +
     (canBorrow ? button('borrow', 'Mượn thiết bị', { id, label: row.equipment_name, glyph: 'borrows', kind: 'primary' }) : ''),

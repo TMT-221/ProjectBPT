@@ -335,6 +335,14 @@ input:not([type="checkbox"]):not([type="radio"]):focus, select:focus, textarea:f
 .form-error:empty { display: none; }
 .action-note, .alert { display: flex; gap: 9px; align-items: flex-start; margin-top: 16px; padding: 13px 14px; color: var(--body); background: var(--surface-tint); border: 1px solid var(--line); border-radius: 9px; font-size: 13px; }
 .action-note svg { flex: none; margin-top: 2px; color: var(--muted); }
+.catalog-notice { padding: 0 22px; }
+.catalog-notice .action-note { margin-top: 0; margin-bottom: 14px; }
+.lab-card.is-locked { background: #fbf9fd; border-color: #e4d9f1; }
+.lab-lock-note, .lab-ok-note { display: flex; gap: 7px; align-items: flex-start; margin: 12px 0 0; padding: 8px 10px; border-radius: 8px; font-size: 12px; line-height: 1.45; }
+.lab-lock-note { background: var(--red-pale); color: var(--red); border: 1px solid #f3cfd6; }
+.lab-ok-note { background: var(--green-pale); color: var(--green); border: 1px solid #cbead9; }
+.lab-lock-note svg, .lab-ok-note svg { flex: none; margin-top: 2px; }
+.equipment-lab-cell { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .alert:is(.danger,.error) { background: var(--red-pale); color: var(--red); border-color: #f3cfd6; }
 .alert.warning { background: var(--warn-pale); color: var(--warn); border-color: #ead9b3; }
 .empty-state, .loading-state { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 12px; text-align: center; padding: 52px 24px; color: var(--muted); min-height: 160px; }

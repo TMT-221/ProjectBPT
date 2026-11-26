@@ -91,6 +91,9 @@ INSERT INTO access_log(log_id,person_id,lab_id,entry_time,purpose) VALUES(912,4,
 SELECT pg_temp.expect_true('BR05_expiry_inclusive',$sql$SELECT person_id=4 FROM access_log WHERE log_id=912$sql$);
 INSERT INTO access_log(log_id,person_id,lab_id,entry_time,purpose) VALUES(913,7,1,CURRENT_DATE+TIME '09:00','Normal without certification');
 SELECT pg_temp.expect_true('BR05_normal_no_cert',$sql$SELECT person_id=7 FROM access_log WHERE log_id=913$sql$);
+SELECT pg_temp.expect_reject('BR05_borrow_restricted',$sql$SELECT checkout_equipment(7,4,CURRENT_DATE+3)$sql$,'BR05');
+SELECT pg_temp.expect_reject('BR05_borrow_hazardous',$sql$SELECT checkout_equipment(7,8,CURRENT_DATE+3)$sql$,'BR05');
+SELECT pg_temp.expect_reject('BR05_borrow_missing_one',$sql$SELECT checkout_equipment(9,8,CURRENT_DATE+3)$sql$,'BR05');
 -- Student [07:00,17:00), Faculty [06:00,22:00); purpose remains free text.
 SELECT pg_temp.expect_reject('BR04_0659',$sql$INSERT INTO access_log(person_id,lab_id,entry_time,purpose) VALUES(4,1,CURRENT_DATE+TIME '06:59','Early student')$sql$,'BR04');
 INSERT INTO access_log(log_id,person_id,lab_id,entry_time,purpose) VALUES(914,4,1,CURRENT_DATE+TIME '07:00','Start inclusive'),(915,4,1,CURRENT_DATE+TIME '16:59','Before end');

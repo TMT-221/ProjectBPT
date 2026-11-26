@@ -143,13 +143,13 @@ async function labsForUser(db,user) {
    : 'Phòng hạn chế cần chứng nhận An toàn phòng thí nghiệm cơ bản còn hiệu lực.') :
    needsApproval ? 'Sinh viên cần giảng viên hoặc kỹ thuật viên phê duyệt ngoài khung 07:00–17:00.' : null;
   const levels=writable&&admin(user) ? labLevels.filter(level=>level!==room.safety_level&&(!contains_extreme||level==='Hazardous')) : [];
-  return {...room,can_enter:!reason,entry_block_reason:reason,
+  return {...room,has_cert,can_enter:!reason,entry_block_reason:reason,
    requires_out_of_hours_reason:user.role==='faculty'&&faculty_outside_hours,
    can_change_safety:levels.length>0,allowed_safety_levels:levels,
    safety_block_reason:writable&&admin(user)&&contains_extreme?'Phòng đang chứa hóa chất mức Cực cao nên phải giữ mức an toàn Nguy hiểm.':null};
  });
 }
-const equipColumns = `e.equipment_id::text,e.lab_id::text,e.equipment_name,e.serial_number,e.purchase_date::text,e.current_status,l.lab_name`;
+const equipColumns = `e.equipment_id::text,e.lab_id::text,e.equipment_name,e.serial_number,e.purchase_date::text,e.current_status,l.lab_name,l.safety_level`;
 const grantColumns = `g.grant_id::text,g.grant_title,g.principal_investigator_id::text,p.full_name AS principal_investigator,
   g.start_date::text,g.end_date::text,g.status,
   CASE WHEN ${ownOrAdmin} THEN g.total_budget::text END AS total_budget,
@@ -179,7 +179,7 @@ async function dashboard(db, user) {
     (SELECT count(*)::integer FROM ${S}.v_certification_current WHERE person_id=$1::bigint AND status='Valid'
       AND issue_date<=CURRENT_DATE AND expiry_date BETWEEN CURRENT_DATE AND CURRENT_DATE+30) AS certifications_expiring,
     (SELECT count(*)::integer FROM ${S}.laboratory) AS labs_total`,[actor]);
-  const labs = await qs(db, labSelect);
+  const labs = actor ? await labsForUser(db, user) : await qs(db, labSelect);
   const activities = await qs(db,`SELECT type,title,subtitle,${ts('event_time')} AS date,status FROM (
     SELECT 'borrow' AS type,e.equipment_name AS title,'Mượn thiết bị' AS subtitle,b.borrow_date::timestamp AS event_time,${borrowStatus} AS status
     FROM ${S}.v_borrow_current b JOIN ${S}.equipment e USING(equipment_id)
@@ -212,15 +212,16 @@ async function dashboard(db, user) {
 }
 
 async function equipment(db, p, user) {
-  const w=where();
+  const w=where([], [person(user)]);
   w.search(['e.equipment_name','e.serial_number','l.lab_name'],p.get('q'));
   w.add(s=>`e.lab_id=${s}::bigint`,optId(p,'lab_id'));
   w.add(s=>`e.current_status=${s}`,pick(p.get('status') || p.get('current_status'),['Available','In Use','Under Maintenance','Retired'],'trạng thái'));
-  return page(db,p,`SELECT ${equipColumns} FROM ${S}.equipment e JOIN ${S}.laboratory l USING(lab_id)${w.sql}`,w.values,'equipment_name,equipment_id::bigint',['equipment_name','serial_number','purchase_date','current_status','lab_name']);
+  return page(db,p,`SELECT ${equipColumns},${labCertified('$1::bigint','l.safety_level')} AS has_lab_cert FROM ${S}.equipment e JOIN ${S}.laboratory l USING(lab_id)${w.sql}`,w.values,'equipment_name,equipment_id::bigint',['equipment_name','serial_number','purchase_date','current_status','lab_name']);
 }
 async function equipmentDetail(db, asset, user) {
-  const record=await first(db,`SELECT ${equipColumns}, CASE WHEN $2::boolean THEN e.purchase_cost::text END AS purchase_cost
-    FROM ${S}.equipment e JOIN ${S}.laboratory l USING(lab_id) WHERE e.equipment_id=$1::bigint`,[asset,technician(user)]);
+  const record=await first(db,`SELECT ${equipColumns}, CASE WHEN $2::boolean THEN e.purchase_cost::text END AS purchase_cost,
+    ${labCertified('$3::bigint','l.safety_level')} AS has_lab_cert
+    FROM ${S}.equipment e JOIN ${S}.laboratory l USING(lab_id) WHERE e.equipment_id=$1::bigint`,[asset,technician(user),person(user)]);
   if (!record) missing('Không tìm thấy thiết bị.');
   const borrows=await qs(db,`SELECT ${borrowsColumns} ${borrowsJoin} WHERE b.equipment_id=$1::bigint AND b.person_id=$2::bigint
     ORDER BY b.borrow_date DESC,b.borrow_id DESC LIMIT 25`,[asset,person(user)]);
@@ -231,7 +232,11 @@ async function equipmentDetail(db, asset, user) {
   const {open_count,has_open_loan}=await first(db,`SELECT
     (SELECT count(*)::int FROM ${S}.v_borrow_current b WHERE b.person_id=$1::bigint AND b.actual_return_date IS NULL) AS open_count,
     EXISTS (SELECT 1 FROM ${S}.v_borrow_current b WHERE b.equipment_id=$2::bigint AND b.actual_return_date IS NULL) AS has_open_loan`,[person(user),asset]);
+  const certReason=!record.has_lab_cert ? (record.safety_level==='Hazardous'
+    ? 'Thiết bị thuộc phòng nguy hiểm — cần đủ chứng nhận cơ bản, xử lý dung môi dễ cháy và xử lý axit oxy hóa mạnh còn hiệu lực để mượn.'
+    : 'Thiết bị thuộc phòng hạn chế — cần chứng nhận An toàn phòng thí nghiệm cơ bản còn hiệu lực để mượn.') : null;
   const reason=!member(user) ? readOnly : record.current_status!=='Available'||has_open_loan ? 'Thiết bị này hiện không khả dụng để mượn.' :
+    certReason ? certReason :
     open_count>=3 ? 'Bạn đang giữ đủ 3 thiết bị chưa trả. Hãy trả một thiết bị trước khi mượn thêm.' : null;
   return {...record,borrows,maintenance,can_borrow:!reason,borrow_block_reason:reason,
     can_start_maintenance:member(user)&&technician(user)&&record.current_status==='Available'&&!has_open_loan};

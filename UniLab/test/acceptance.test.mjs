@@ -121,6 +121,14 @@ test('Nghiệm thu UniLab trên API HTTP và PGlite',async t=>{
   assert.equal(expiredVisitors[0].has_valid_lab_certification,false);
   await expect(call('/students',{actor:auditor}),403);
   assert.equal((await get('/equipment/3',student)).can_borrow,true);
+  assert.equal((await get('/equipment/4',student)).can_borrow,false);
+  assert.match((await get('/equipment/4',student)).borrow_block_reason,/chứng nhận/);
+  assert.equal((await get('/equipment/8',student)).can_borrow,false);
+  assert.match((await get('/equipment/8',student)).borrow_block_reason,/chứng nhận/);
+  assert.equal((await get('/equipment/4',faculty)).can_borrow,true);
+  assert.equal((await get('/equipment/8',faculty)).can_borrow,false);
+  assert.match((await get('/equipment/8',faculty)).borrow_block_reason,/chứng nhận/);
+  assert.equal((await get('/equipment/8',tech)).can_borrow,true);
   assert.equal((await get('/equipment/6',student)).can_borrow,false);
   assert.equal((await get('/equipment/3',auditor)).can_borrow,false);
   assert.equal((await get('/equipment/3',tech)).can_start_maintenance,true);
@@ -142,19 +150,28 @@ test('Nghiệm thu UniLab trên API HTTP và PGlite',async t=>{
   await expect(post('/borrows/'+data.borrow_id+'/return',student),200);
   assert.equal(await state('3'),'Available');
  });
- await t.test('AT02: Tối đa ba lượt mở, tính cả lượt quá hạn',async()=>{
-  await db.query('INSERT INTO lab_tracker.borrow_transaction(person_id,equipment_id,borrow_date,expected_return_date) VALUES($1,3,CURRENT_DATE-3,CURRENT_DATE-1)',[student.user.person_id]);
-  const other=[];
-  for(const id of ['4','7']) other.push((await expect(checkout(student,id),201)).data.borrow_id);
-  const bad=await expect(checkout(student,'8'),409);
-  assert.equal(bad.error.code,'BORROW_LIMIT_REACHED');
-  assert.equal(await open(student.user.person_id),3);
+ await t.test('AT02: Tối đa ba lượt mở, tính cả lượt quá hạn; chặn mượn thiết bị phòng thiếu chứng nhận',async()=>{
+  const uncertRestricted=await expect(checkout(student,'4'),403);
+  assert.equal(uncertRestricted.error.code,'CERTIFICATION_REQUIRED');
+  assert.equal(await state('4'),'Available');
+  const uncertHazardous=await expect(checkout(student,'8'),403);
+  assert.equal(uncertHazardous.error.code,'CERTIFICATION_REQUIRED');
   assert.equal(await state('8'),'Available');
-  const detail=(await expect(call('/equipment/8',{actor:student}),200)).data;
+  const partialHazardous=await expect(checkout(faculty,'8'),403);
+  assert.equal(partialHazardous.error.code,'CERTIFICATION_REQUIRED');
+  assert.equal(await state('8'),'Available');
+  await db.query('INSERT INTO lab_tracker.borrow_transaction(person_id,equipment_id,borrow_date,expected_return_date) VALUES($1,3,CURRENT_DATE-3,CURRENT_DATE-1)',[tech.user.person_id]);
+  const other=[];
+  for(const id of ['4','7']) other.push((await expect(checkout(tech,id),201)).data.borrow_id);
+  const bad=await expect(checkout(tech,'8'),409);
+  assert.equal(bad.error.code,'BORROW_LIMIT_REACHED');
+  assert.equal(await open(tech.user.person_id),3);
+  assert.equal(await state('8'),'Available');
+  const detail=(await expect(call('/equipment/8',{actor:tech}),200)).data;
   assert.equal(detail.can_borrow,false);
   assert.match(detail.borrow_block_reason,/3 thiết bị/);
   other.push(await scalar('SELECT borrow_id::text FROM lab_tracker.borrow_transaction WHERE equipment_id=3 AND actual_return_date IS NULL'));
-  for(const id of other) await expect(post('/borrows/'+id+'/return',student),200);
+  for(const id of other) await expect(post('/borrows/'+id+'/return',tech),200);
   assert.equal(await scalar('SELECT status FROM lab_tracker.v_borrow_current WHERE borrow_id=$1',[other.at(-1)]),'Overdue');
  });
  await t.test('AT03: Hai yêu cầu HTTP đồng thời chỉ tạo một lượt mở (PGlite)',async()=>{
